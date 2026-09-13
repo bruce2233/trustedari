@@ -200,6 +200,44 @@
   </div>
 </section>
 
+<!-- ========================= BASELINES ============================ -->
+<section id="baselines">
+  <h3>Baselines</h3>
+  <h2>为什么以前的方法做不到</h2>
+  <p class="sub" style="max-width:760px">
+    对"隐私（R 看不到明文）× 计费（A/R 报多少可验）"两个目标，已有方案各占一头——
+    缺的不是 HTTPS，而是"密钥无人独占"的结构：
+  </p>
+  <table style="margin-top:22px">
+    <tr><th>方案</th><th>R 不见明文</th><th>计费字段可验</th><th>关键缺口</th></tr>
+    <tr><td class="mono">直连 A→S（无中转）</td>
+        <td class="ok">✓</td><td class="bad">✗</td>
+        <td>根本没有审计方，token 用量只能按 A 自报结算——ARI 模型不成立</td></tr>
+    <tr><td class="mono">TLS 终结代理（网关 / CDN）</td>
+        <td class="bad">✗</td><td class="bad">△ 自报</td>
+        <td>R 是连接的一端、握有完整密钥：能解就能看，计费仍靠它自己说</td></tr>
+    <tr><td class="mono">纯转发隧道</td>
+        <td class="ok">✓</td><td class="bad">✗</td>
+        <td>只能按字节数或时长计费；字段级用量（如 total_tokens）无法核验</td></tr>
+    <tr><td class="mono">TEE enclave（SGX 代理）</td>
+        <td class="ok">✓*</td><td class="ok">✓*</td>
+        <td>信任没有消除、只是转移：要相信芯片厂商与远程证明，且侧信道攻击记录一长串</td></tr>
+    <tr><td class="mono">DECO 类三方握手（zkTLS）</td>
+        <td class="warn">△</td><td class="bad">✗</td>
+        <td>面向"数据来自某站"的 provenance：verifier 参与构造查询、通常知模板；
+            无 SHC/LDC 边界隐藏，也无字段级计费电路</td></tr>
+    <tr style="background:#101b14">
+        <td class="mono"><b>TrustedARI</b></td>
+        <td class="ok"><b>✓</b></td><td class="ok"><b>✓</b></td>
+        <td><b>tk = tk<sub>A</sub> ⊕ tk<sub>R</sub>：密钥无人独占 →
+            电路内可验、电路外不可读，S 零改动、无硬件信任</b></td></tr>
+  </table>
+  <p class="cap" style="text-align:left;margin-top:12px">
+    * TEE 行在信任其安全假设的前提下成立；DECO 行的"△"指查询内容对 verifier
+    只能做到有限隐藏——它的目标是证明来源而非保护查询。
+  </p>
+</section>
+
 <!-- ========================= PHASE 1 ============================ -->
 <section>
   <h3>Phase 1 · Π_ths handshake</h3>
