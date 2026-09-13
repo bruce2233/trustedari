@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrustedARI — 可验证、可计费的隐私 Agent 通道</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11151f; --panel2:#161b28; --line:#242b3d;
+    --txt:#e7eaf2; --mut:#8b93a7; --acc:#7aa2ff; --acc2:#4ade9e;
+    --warn:#ffb454; --bad:#ff6b6b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--txt);
+       font:16px/1.7 -apple-system,"SF Pro","Inter","PingFang SC",
+            "Noto Sans SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  h1{font-size:clamp(30px,5vw,52px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  h2{font-size:26px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+  h3{font-size:15px;font-weight:700;color:var(--acc);letter-spacing:.06em;
+     text-transform:uppercase;margin-bottom:14px}
+  .sub{color:var(--mut);font-size:17px}
+  .tag{display:inline-block;font-size:12px;color:var(--acc2);
+       border:1px solid #24473a;background:#0f1f1a;border-radius:999px;
+       padding:2px 12px;margin-bottom:18px}
+  section{padding:72px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  .grid{display:grid;gap:16px}
+  .cols3{grid-template-columns:repeat(3,1fr)}
+  .cols2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.cols3,.cols2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);
+        border-radius:14px;padding:20px}
+  .card h4{font-size:16px;margin-bottom:6px}
+  .card p{color:var(--mut);font-size:14px}
+  .card .who{font-size:12px;color:var(--mut);letter-spacing:.08em}
+  .accent{color:var(--acc)}
+  code,.mono{font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,monospace}
+  kbd{font-family:inherit;font-size:12px;border:1px solid var(--line);
+      border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--panel2)}
+  /* ---------- actor diagram ---------- */
+  .actors{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;
+          align-items:center;gap:12px;margin:34px 0 10px}
+  @media(max-width:720px){.actors{grid-template-columns:1fr;}}
+  .actor{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+         padding:18px;text-align:center;position:relative}
+  .actor .icon{font-size:30px}
+  .actor .name{font-weight:700;margin-top:4px}
+  .actor .role{color:var(--mut);font-size:13px;margin-top:6px}
+  .actor.knows-bad{border-color:#3d2530}
+  .wire{display:flex;align-items:center;gap:8px;justify-content:center;
+        color:var(--mut);font-size:12px}
+  .wire .ln{height:2px;flex:1;min-width:60px;border-radius:2px;
+            background:linear-gradient(90deg,var(--acc),var(--acc2));
+            position:relative}
+  .wire .ln::after{content:"";position:absolute;right:-1px;top:-4px;
+                   border-left:9px solid var(--acc2);
+                   border-top:5px solid transparent;border-bottom:5px solid transparent}
+  .wire{flex-direction:column}
+  .wire .lbl{font-size:12px;color:var(--mut);text-align:center}
+  .cap{font-size:12px;color:var(--mut);text-align:center;margin-top:8px}
+  /* ---------- message flow stepper ---------- */
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:26px;
+        border-left:2px solid var(--line);padding-left:26px;position:relative}
+  .step{position:relative;padding:14px 0 14px 8px}
+  .step::before{content:"";position:absolute;left:-33px;top:22px;width:12px;
+                height:12px;border-radius:50%;background:var(--panel);
+                border:2px solid var(--acc)}
+  .step .t{font-weight:600;font-size:15px}
+  .step .d{color:var(--mut);font-size:14px}
+  .step .dir{font-size:12px;color:var(--acc2);font-family:ui-monospace,monospace}
+  .step.mpc::before{border-color:var(--acc2)}
+  /* ---------- segment viz ---------- */
+  .segbar{display:flex;gap:3px;margin:18px 0 6px;font-family:ui-monospace,monospace;
+          font-size:11px;flex-wrap:wrap}
+  .seg{padding:5px 8px;border-radius:7px;border:1px solid var(--line);
+       background:var(--panel2);color:var(--mut);white-space:nowrap}
+  .seg.p{color:#9aa3b8}
+  .seg.af{color:#ffd08a;border-color:#4a3a22;background:#1c1610}
+  .seg.as{color:#7ae0ff;border-color:#234a55;background:#0f1a1e}
+  .seg.i2s{color:#c4a6ff;border-color:#3c2f55;background:#171226}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);
+          margin-top:8px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;
+            margin-right:5px;vertical-align:-1px}
+  /* ---------- terminal ---------- */
+  .term{background:#0a0c11;border:1px solid var(--line);border-radius:14px;
+        overflow:hidden;margin-top:20px}
+  .term .bar{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .term .bar i{width:10px;height:10px;border-radius:50%;background:#2a3040}
+  .term pre{padding:18px;font-size:12.5px;line-height:1.75;color:#b7c0d8;
+            overflow-x:auto;white-space:pre-wrap}
+  .term .ok{color:var(--acc2)} .term .dim{color:#5b6478}
+  .term .warn{color:var(--warn)}
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--mut);font-weight:600;font-size:12px;letter-spacing:.05em;
+     text-transform:uppercase}
+  td.mono{font-size:13px}
+  .ok{color:var(--acc2)} .bad{color:var(--bad)}
+  footer{padding:40px 0 60px;color:var(--mut);font-size:13px;text-align:center}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  .pill{font-size:12px;border:1px solid var(--line);border-radius:999px;
+        padding:3px 10px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============================ HERO ============================ -->
+<section>
+  <div class="tag">arXiv 2606.15822 · core reproduction</div>
+  <h1>TrustedARI<br><span class="sub" style="font-size:.5em;font-weight:500">
+    一个<em class="accent" style="font-style:normal">诚实中继</em>如何让 Agent 安全地调用付费 API</span></h1>
+  <p class="sub" style="margin-top:18px;max-width:720px">
+    Agent A 想通过问责中继 R 调用服务 S：查询内容要对 R 保密、
+    R 不能把请求错路由到别的服务、S 返回的计费数字 A 不能低报。
+    三方用 <b>2PC</b> 共同模拟出一个"虚拟 TLS 客户端"——S 完全无感。
+  </p>
+
+  <div class="actors">
+    <div class="actor">
+      <div class="icon">🤖</div>
+      <div class="name">Agent A</div>
+      <div class="role">持有查询意图与 tk_sapp；<br>验证证书防 misrouting</div>
+    </div>
+    <div class="wire">
+      <div class="lbl">A⇄R<br>OT 通道</div>
+      <div class="ln" style="width:80px"></div>
+    </div>
+    <div class="actor">
+      <div class="icon">📡</div>
+      <div class="name">ARI Relay R</div>
+      <div class="role">只转发密文；<br>持有密钥<i>份额</i>而非密钥</div>
+    </div>
+    <div class="wire">
+      <div class="lbl">R⇄S<br>标准 TLS</div>
+      <div class="ln" style="width:80px"></div>
+    </div>
+    <div class="actor">
+      <div class="icon">🛰️</div>
+      <div class="name">Provider S</div>
+      <div class="role">普通 TLS 1.3 服务；<br>不知道 A/R 的存在</div>
+    </div>
+  </div>
+  <div class="cap">A 与 R 各持一半会话密钥；任何一方都无法单独读写通道内容。</div>
+</section>
+
+<!-- ========================= PHASE 1 ============================ -->
+<section>
+  <h3>Phase 1 · Π_ths handshake</h3>
+  <h2>三方握手：密钥拆成两半，证书仍由 Agent 验</h2>
+  <p class="sub" style="max-width:720px">
+    R 本质上是"半个客户端"：ECDHE 秘密拆成 Z<sub>A</sub>+Z<sub>R</sub>，
+    HKDF 全链在 2PC 中执行，R 只拿到 tk_chs/tk_shs 的<i>份额</i>。
+    服务端 flight（证书+CV+SF）只在 A 处解密——R 无法伪造服务商身份。
+  </p>
+  <div class="flow">
+    <div class="step"><div class="dir">A → R → S</div>
+      <div class="t">ClientHello：r_i → Z_i，CKS = Z_A + Z_R</div>
+      <div class="d">双方各自贡献 ephemeral share，合成压缩点作为 key_share</div></div>
+    <div class="step mpc"><div class="dir">A ⇄ R · 2PC</div>
+      <div class="t">ECtF 点加 → DHE 份额 → HKDF 链</div>
+      <div class="d">ssk_i = Y<sup>r_i</sup>，点加只取 x 坐标；fld→bits 后 Extract/Expand 出 CHTS/SHTS/dHS</div></div>
+    <div class="step"><div class="dir">S → R → A</div>
+      <div class="t">加密的 Server Flight（EE/CRT/CV/SF）</div>
+      <div class="d">A 重建 tk_shs 解密：验证书链、域名、CertificateVerify、ServerFinished</div></div>
+    <div class="step mpc"><div class="dir">A ⇄ R · 2PC</div>
+      <div class="t">MS → CATS/SATS → tk_capp/tk_sapp；A 提交 com_A = H(tk_A_sapp ∥ r)</div>
+      <div class="d">tk_sapp 份额留给 R 用于计费核验；iv 公开</div></div>
+    <div class="step"><div class="dir">A → R → S</div>
+      <div class="t">Client Finished（tk_chs 加密）</div>
+      <div class="d">CF 由 A 在本地组装，经 R 转发——S 收到标准记录，握手完成</div></div>
+  </div>
+  <div class="cap" style="color:var(--warn)">
+    ✗ misrouting：R 把流量转到 api2.evil.com → A 端证书名校验失败，会话中止（已测试）。
+  </div>
+</section>
+
+<!-- ========================= PHASE 2 ============================ -->
+<section>
+  <h3>Phase 2 · Π_query</h3>
+  <h2>模板查询：连字段边界都对 R 隐藏</h2>
+  <p class="sub" style="max-width:720px">
+    查询由模板拼装：公共段 P、定长私有段 A<sub>f</sub>/R<sub>f</sub>、
+    <b>变长私有段 A<sub>s</sub>/R<sub>s</sub></b>（真实长度 g 都是份额）。
+    段间用 SHC（Structure-Hiding Concat）抹平边界，最后经 2PC-AEAD 加密。
+  </p>
+
+  <div class="segbar" id="seg"></div>
+  <div class="legend">
+    <span><i style="background:#9aa3b8"></i>P 公共模板</span>
+    <span><i style="background:#ffd08a"></i>A<sub>f</sub> 定长·A 私有</span>
+    <span><i style="background:#7ae0ff"></i>A<sub>s</sub> 变长·长度也是秘密</span>
+    <span><i style="background:#c4a6ff"></i>Π_I2S 生成的 Content-Length</span>
+  </div>
+
+  <div class="grid cols3" style="margin-top:22px">
+    <div class="card"><h4>Π_LDC</h4>
+      <p>公共长度拼接直接本地完成——零交互、零成本。</p></div>
+    <div class="card"><h4>Π_SHC（Protocol 1）</h4>
+      <p>v<sub>a</sub>=s<sub>l</sub>‖0<sup>hr</sup>，v<sub>0</sub>=0<sup>hl</sup>‖s<sub>r</sub>；
+        对右段做 <span class="mono">blind_rotate_left</span> 后异或。
+        成本 (hl+hr)·⌈log₂⌉，装配顺序由 DP 规划 Γ 最小化。</p></div>
+    <div class="card"><h4>Π_2PC-AEAD</h4>
+      <p>整条查询以 tk_capp = tk_A ⊕ tk_R 加密；密文+tag 双开，
+        R 转发的是一条完全合法的 TLS 记录。</p></div>
+  </div>
+</section>
+
+<!-- ========================= PHASE 3 ============================ -->
+<section>
+  <h3>Phase 3 · verifiable billing</h3>
+  <h2>可验证计费：电路里跑一个 JSON 解析器</h2>
+  <p class="sub" style="max-width:720px">
+    A 向 R 汇报被计费字段 φ:v，R 不信——双方在 2PC 里把
+    <b>响应密文的一个窗口解密成明文份额</b>，原地跑 JSON FSM。
+  </p>
+  <div class="grid cols2" style="margin-top:20px">
+    <div class="card"><h4>边界窗口 ω=(o,ℓ,ρ)</h4>
+      <p>前缀窗口从 JSON 起点正向解析，后缀窗口从尾部反向解析，
+        取较短者——大响应里只解密目标附近的几块。</p></div>
+    <div class="card"><h4>串/转义/深度状态机</h4>
+      <p><span class="mono">e_i=(1−e)·b·κ92&nbsp;&nbsp;b_i=b⊕κ34·(1−e)</span><br>
+        <span class="mono">d_i=d+(1−b)(κ123−κ125)</span> ——
+        字符串里的 <code>{</code> <code>}</code> 与 <code>\"</code> 不计深度。</p></div>
+    <div class="card"><h4>承诺重检</h4>
+      <p>com<sub>A</sub> ?= H(tk<sub>A,sapp</sub>∥r) —— A 无法换一把
+        "更好说话"的密钥份额来解释密文。</p></div>
+    <div class="card"><h4>单比特输出</h4>
+      <p>accept = com_ok ∧ bytes_ok ∧ depth_ok，<br>
+        R 只学到 accept——响应明文始终不可见。</p></div>
+  </div>
+</section>
+
+<!-- ========================= LIVE RUN ============================ -->
+<section>
+  <h3>Live run</h3>
+  <h2>端到端实际输出</h2>
+  <div class="term">
+    <div class="bar"><i></i><i></i><i></i>
+      <span style="margin-left:8px;font-size:12px;color:var(--mut)">python3 demo.py</span></div>
+    <pre id="term"></pre>
+  </div>
+  <p class="cap" style="text-align:left;margin-top:14px">
+    5 套测试全绿：引擎 / 电路 / 握手（含 misrouting 拒绝）/ 查询 / 计费（含 4 类攻击拒绝）；
+    计费电路在真实 OT 后端下同样通过（1-block 窗口 ≈ 16 s、A↔R 各 ~4.3 MB）。
+  </p>
+</section>
+
+<!-- ========================= ATTACKS ============================ -->
+<section>
+  <h3>Threats covered</h3>
+  <h2>威胁模型覆盖</h2>
+  <table>
+    <tr><th>攻击者</th><th>行为</th><th>结果</th></tr>
+    <tr><td class="mono">R</td><td>把流量错路由到其他服务</td>
+        <td class="bad">✗ A 端证书名校验失败</td></tr>
+    <tr><td class="mono">R</td><td>读取查询 / 响应明文</td>
+        <td class="ok">✓ 只有密钥份额，通道为密文</td></tr>
+    <tr><td class="mono">A</td><td>低报计费字段（如 42→00）</td>
+        <td class="bad">✗ bytes_ok 失配</td></tr>
+    <tr><td class="mono">A</td><td>声称字段位于错误深度</td>
+        <td class="bad">✗ depth_ok 失配</td></tr>
+    <tr><td class="mono">A</td><td>更换密钥份额伪造解释</td>
+        <td class="bad">✗ com_A = H(tk_A∥r) 失配</td></tr>
+    <tr><td class="mono">R</td><td>篡改自身 tk_sapp 份额</td>
+        <td class="bad">✗ 解密出的明文对不上字段</td></tr>
+  </table>
+</section>
+
+<footer>
+  <span class="pill">repo · bruce2233/trustedari</span>
+  &nbsp;&nbsp;论文核心功能 Python 复现 · GMW 2PC · CO15+IKNP OT · sim/OT 双后端
+</footer>
+</div>
+
+<script>
+// ---- query template viz ----
+const TPL = [
+  ["P",'{"tokens":',"p"],["Af","10","af"],["P",',"q":"',"p"],
+  ["As","translate…","as"],["P",'"}',"p"],
+];
+const CL = [["P","Content-Length: ","p"],["I2S","0053","i2s"],["P","\\r\\n","p"]];
+const seg = document.getElementById("seg");
+[...CL,...TPL].forEach(([t,c,k],i)=>{
+  const d=document.createElement("div");
+  d.className="seg "+k;
+  d.innerHTML=`<span style="opacity:.55">${t}</span> ${c}`;
+  seg.appendChild(d);
+  if(i===CL.length-1){const br=document.createElement("div");br.style.flexBasis="100%";br.style.height=4;seg.appendChild(br);}
+});
+
+// ---- terminal typing ----
+const LINES=[
+ ["dim","$ python3 demo.py"],
+ ["","[A] handshake with virtual client (Pi_ths) ..."],
+ ["","[R] relaying handshake (sees only ciphertext) ..."],
+ ["ok","[A] handshake ok; cert 'api.example.com' verified; com_A = 61ab4f…"],
+ ["","[R] forwarding opaque record (55B) to S ..."],
+ ["",'[A] response: {"status":"ok","usage":{"total_tokens":10,…}}'],
+ ["ok","[*] billing verification: accept = 1"],
+ ["warn","[*] forged claim 'total_tokens: 00': accept = 0  (rejected)"],
+ ["ok","[*] done — all checks passed"],
+];
+const term=document.getElementById("term");
+let li=0;
+function tick(){
+  if(li>=LINES.length)return;
+  const [cls,txt]=LINES[li++];
+  const sp=document.createElement("span");
+  if(cls)sp.className=cls;
+  sp.textContent=txt+"\n";
+  term.appendChild(sp);
+  setTimeout(tick,li===1?300:170);
+}
+const io=new IntersectionObserver(e=>{if(e[0].isIntersecting){tick();io.disconnect();}});
+io.observe(term);
+</script>
+</body>
+</html>
