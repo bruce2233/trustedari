@@ -70,6 +70,19 @@
   .why h4 .bad{font-weight:800;margin-right:6px}
   .why p{color:var(--mut);font-size:15px;max-width:840px}
   .why b{color:var(--txt)}
+  /* ---------- baseline mini-diagrams ---------- */
+  .bd{width:100%;height:auto;display:block;margin:0 0 12px}
+  .bx{fill:#0e1220;stroke:#3a4358;stroke-width:1.2}
+  .bxx{fill:#0e1220;stroke:var(--acc);stroke-width:1.4}
+  .bl{fill:#e7eaf2;font-size:13.5px;font-weight:700;text-anchor:middle;font-family:inherit}
+  .bl2{fill:#8b93a7;font-size:10px;text-anchor:middle;
+      font-family:ui-monospace,Menlo,monospace}
+  .tls{stroke:#4ade9e;stroke-width:2}
+  .ot{stroke:#7aa2ff;stroke-width:2;stroke-dasharray:4 3}
+  .bok{fill:#4ade9e;font-size:11.5px;text-anchor:middle}
+  .bbad{fill:#ff6b6b;font-size:11.5px;text-anchor:middle}
+  .bwarn{fill:#ffb454;font-size:11.5px;text-anchor:middle}
+  .card.hit{border-color:#2c5c40;background:#0f1712}
   /* ---------- message flow stepper ---------- */
   .flow{display:flex;flex-direction:column;gap:0;margin-top:26px;
         border-left:2px solid var(--line);padding-left:26px;position:relative}
@@ -208,33 +221,126 @@
     对"隐私（R 看不到明文）× 计费（A/R 报多少可验）"两个目标，已有方案各占一头——
     缺的不是 HTTPS，而是"密钥无人独占"的结构：
   </p>
-  <table style="margin-top:22px">
-    <tr><th>方案</th><th>R 不见明文</th><th>计费字段可验</th><th>关键缺口</th></tr>
-    <tr><td class="mono">直连 A→S（无中转）</td>
-        <td class="ok">✓</td><td class="bad">✗</td>
-        <td>根本没有审计方，token 用量只能按 A 自报结算——ARI 模型不成立</td></tr>
-    <tr><td class="mono">TLS 终结代理（网关 / CDN）</td>
-        <td class="bad">✗</td><td class="bad">△ 自报</td>
-        <td>R 是连接的一端、握有完整密钥：能解就能看，计费仍靠它自己说</td></tr>
-    <tr><td class="mono">纯转发隧道</td>
-        <td class="ok">✓</td><td class="bad">✗</td>
-        <td>只能按字节数或时长计费；字段级用量（如 total_tokens）无法核验</td></tr>
-    <tr><td class="mono">TEE enclave（SGX 代理）</td>
-        <td class="ok">✓*</td><td class="ok">✓*</td>
-        <td>信任没有消除、只是转移：要相信芯片厂商与远程证明，且侧信道攻击记录一长串</td></tr>
-    <tr><td class="mono">DECO 类三方握手（zkTLS）</td>
-        <td class="warn">△</td><td class="bad">✗</td>
-        <td>面向"数据来自某站"的 provenance：verifier 参与构造查询、通常知模板；
-            无 SHC/LDC 边界隐藏，也无字段级计费电路</td></tr>
-    <tr style="background:#101b14">
-        <td class="mono"><b>TrustedARI</b></td>
-        <td class="ok"><b>✓</b></td><td class="ok"><b>✓</b></td>
-        <td><b>tk = tk<sub>A</sub> ⊕ tk<sub>R</sub>：密钥无人独占 →
-            电路内可验、电路外不可读，S 零改动、无硬件信任</b></td></tr>
-  </table>
-  <p class="cap" style="text-align:left;margin-top:12px">
-    * TEE 行在信任其安全假设的前提下成立；DECO 行的"△"指查询内容对 verifier
-    只能做到有限隐藏——它的目标是证明来源而非保护查询。
+  <div class="grid cols2" style="margin-top:24px">
+
+    <div class="card">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bx" x="10" y="36" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="56">A</text>
+        <rect class="bx" x="256" y="36" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="56">S</text>
+        <line class="tls" x1="64" y1="51" x2="256" y2="51"/>
+        <text class="bl2" x="160" y="44">TLS</text>
+        <text class="bbad" x="160" y="94">计费 = A 自报 ✗</text>
+      </svg>
+      <h4>直连 A→S（无中转）</h4>
+      <p>隐私天然成立，但没有审计方——token 用量只能信 A 自报，ARI 模型不成立。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 计费不可验</p>
+    </div>
+
+    <div class="card">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bx" x="10" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="60">A</text>
+        <rect class="bx" x="133" y="40" width="54" height="30" rx="8" style="stroke:#ff6b6b"/>
+        <text class="bl" x="160" y="60">R</text>
+        <rect class="bx" x="256" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="60">S</text>
+        <line class="tls" x1="64" y1="55" x2="133" y2="55"/>
+        <line class="tls" x1="187" y1="55" x2="256" y2="55"/>
+        <text class="bl2" x="98" y="48">TLS₁</text>
+        <text class="bl2" x="221" y="48">TLS₂</text>
+        <text class="bbad" x="160" y="30">🔓 握有完整密钥</text>
+        <text class="bbad" x="160" y="94">能解密 → 明文可见 · 计费仍自报</text>
+      </svg>
+      <h4>TLS 终结代理（网关 / CDN）</h4>
+      <p>R 就是连接的一端，完整密钥在手——能解就能看；计费还是它自己说。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 隐私失败</p>
+    </div>
+
+    <div class="card">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bx" x="10" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="60">A</text>
+        <rect x="133" y="40" width="54" height="30" rx="8"
+              style="fill:none;stroke:#3a4358;stroke-width:1.2;stroke-dasharray:4 3"/>
+        <text class="bl" x="160" y="60" style="fill:#8b93a7">R</text>
+        <rect class="bx" x="256" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="60">S</text>
+        <line class="tls" x1="64" y1="55" x2="256" y2="55"/>
+        <text class="bl2" x="160" y="30">只见密文</text>
+        <text class="bbad" x="160" y="94">只按字节/时长计费 · 字段不可验</text>
+      </svg>
+      <h4>纯转发隧道</h4>
+      <p>TLS 直接穿过 R：明文保住了，但字段级用量（如 total_tokens）无从核验。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 计费失败</p>
+    </div>
+
+    <div class="card">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bx" x="10" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="60">A</text>
+        <rect class="bx" x="125" y="34" width="70" height="42" rx="8" style="stroke:#ffb454"/>
+        <rect x="134" y="48" width="52" height="16" rx="4"
+              style="fill:#0f1f1a;stroke:#4ade9e;stroke-width:1"/>
+        <text class="bl2" x="160" y="60" style="fill:#4ade9e">enclave</text>
+        <rect class="bx" x="256" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="60">S</text>
+        <line class="tls" x1="64" y1="55" x2="125" y2="55"/>
+        <line class="tls" x1="195" y1="55" x2="256" y2="55"/>
+        <text class="bwarn" x="160" y="26">⚠ 信任 Intel + 无侧信道</text>
+        <text class="bwarn" x="160" y="94">信任转移而非消除</text>
+      </svg>
+      <h4>TEE enclave（SGX 代理）</h4>
+      <p>隐私与计费都成立——但前提是相信芯片厂商、远程证明和没有侧信道漏洞。</p>
+      <p class="warn" style="font-size:13px;margin-top:6px">△ 额外硬件信任假设</p>
+    </div>
+
+    <div class="card">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bx" x="10" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="60">A</text>
+        <rect class="bx" x="133" y="40" width="54" height="30" rx="8" style="stroke:#ffb454"/>
+        <text class="bl" x="160" y="60">V</text>
+        <rect class="bx" x="256" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="60">S</text>
+        <line class="ot" x1="64" y1="55" x2="133" y2="55"/>
+        <line class="tls" x1="187" y1="55" x2="256" y2="55"/>
+        <text class="bl2" x="98" y="48">2PC</text>
+        <text class="bwarn" x="160" y="30">查询模板对 verifier 可见</text>
+        <text class="bwarn" x="160" y="94">面向 provenance · 无边界隐藏/计费电路</text>
+      </svg>
+      <h4>DECO 类三方握手（zkTLS）</h4>
+      <p>同样拆密钥，但目标是"证明数据来自某站"：verifier 参与构造查询，
+        没有 SHC/LDC 边界隐藏，也没有字段级计费电路。</p>
+      <p class="warn" style="font-size:13px;margin-top:6px">△ 查询半公开 · 不做计费</p>
+    </div>
+
+    <div class="card hit">
+      <svg class="bd" viewBox="0 0 320 104">
+        <rect class="bxx" x="10" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="37" y="60">A</text>
+        <rect class="bxx" x="133" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="160" y="60">R</text>
+        <rect class="bx" x="256" y="40" width="54" height="30" rx="8"/>
+        <text class="bl" x="283" y="60">S</text>
+        <line class="ot" x1="64" y1="55" x2="133" y2="55"/>
+        <line class="tls" x1="187" y1="55" x2="256" y2="55"/>
+        <text class="bl2" x="98" y="48">2PC · OT</text>
+        <text class="bl2" x="221" y="48">TLS</text>
+        <text class="bok" x="160" y="30">tk = tk_A ⊕ tk_R　密钥无人独占</text>
+        <text class="bok" x="160" y="94">✓ 隐私　✓ 计费可验　✓ S 零改动</text>
+      </svg>
+      <h4>TrustedARI（本工作）</h4>
+      <p>密钥以份额存在于 A、R 双方：电路内可验、电路外不可读，
+        不需要 TEE，S 完全无感。</p>
+      <p class="ok" style="font-size:13px;margin-top:6px">✓ 两个目标同时成立</p>
+    </div>
+
+  </div>
+  <p class="cap" style="text-align:left;margin-top:14px">
+    注：TEE 在其安全假设下确实可行，区别是信任转移而非消除；
+    DECO 的"△"指查询对 verifier 只能有限隐藏——它保护的是来源，不是查询内容。
   </p>
 </section>
 
