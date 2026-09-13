@@ -60,6 +60,16 @@
   .wire{flex-direction:column}
   .wire .lbl{font-size:12px;color:var(--mut);text-align:center}
   .cap{font-size:12px;color:var(--mut);text-align:center;margin-top:8px}
+  /* ---------- three whys ---------- */
+  .why{display:grid;grid-template-columns:72px 1fr;gap:20px;
+       padding:26px 0;border-top:1px solid var(--line)}
+  .why:first-of-type{border-top:none}
+  .why .no{font-size:34px;font-weight:800;line-height:1;
+           color:transparent;-webkit-text-stroke:1.2px var(--acc)}
+  .why h4{font-size:19px;margin-bottom:8px}
+  .why h4 .bad{font-weight:800;margin-right:6px}
+  .why p{color:var(--mut);font-size:15px;max-width:840px}
+  .why b{color:var(--txt)}
   /* ---------- message flow stepper ---------- */
   .flow{display:flex;flex-direction:column;gap:0;margin-top:26px;
         border-left:2px solid var(--line);padding-left:26px;position:relative}
@@ -146,6 +156,48 @@
     </div>
   </div>
   <div class="cap">A 与 R 各持一半会话密钥；任何一方都无法单独读写通道内容。</div>
+</section>
+
+<!-- ========================= THREE WHYS ============================ -->
+<section id="why">
+  <h3>Three questions</h3>
+  <h2>一句话版：为什么它安全</h2>
+
+  <div class="why">
+    <div class="no">01</div>
+    <div>
+      <h4>为什么中转 R 看不到明文？</h4>
+      <p>因为<b>密钥根本不存在于任何一方手里</b>——应用密钥被拆成
+        tk&nbsp;=&nbsp;tk<sub>A</sub>&nbsp;⊕&nbsp;tk<sub>R</sub> 两份份额，
+        R 拿着密文加半个份额等于拿一张白纸；每次解密都必须双方在 2PC 电路里共同完成，
+        GMW+OT 保证交互本身不泄露任何份额。连握手期的 Server Flight 都只用 tk<sub>shs</sub>
+        在 A 本地解密——R 从始至终只转发看不懂的字节。</p>
+    </div>
+  </div>
+
+  <div class="why">
+    <div class="no">02</div>
+    <div>
+      <h4>为什么没法偷换路由？</h4>
+      <p>因为<b>验证书的权力没有下放给 R</b>。证书、CertificateVerify、ServerFinished
+        由 A 在本地解密验证：X.509 证书绑定服务域名，签名密钥只有真正的 S 才有。
+        R 若把流量转去 api2.evil.com，A 端立刻看到域名错配的证书 → 握手中止。
+        "路由完整性"退化成一句 A 端证书的域名校验，R 对"它是谁"没有裁量权。</p>
+    </div>
+  </div>
+
+  <div class="why">
+    <div class="no">03</div>
+    <div>
+      <h4>为什么没法注水 token？</h4>
+      <p>因为<b>计费字段不是谁申报就是多少</b>。响应是 S 用 TLS 加密的——R 或 A
+        改一个字节，GCM tag 立刻作废；而 A 自报的数字 R 也不信：双方把响应密文的
+        一个窗口在 2PC 里解密成份额，电路内逐字节比对 pattern、用 JSON FSM
+        校验字段所在深度，再用 com<sub>A</sub>&nbsp;=&nbsp;H(tk<sub>A</sub>∥r)
+        钉死 A 的密钥份额防止换把"好说话"的密钥。任何一项对不上 → accept=0，
+        且 R 全程只学到一个比特。</p>
+    </div>
+  </div>
 </section>
 
 <!-- ========================= PHASE 1 ============================ -->
