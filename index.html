@@ -136,79 +136,84 @@
 <section>
   <div class="tag">arXiv 2606.15822 · core reproduction</div>
   <h1>TrustedARI<br><span class="sub" style="font-size:.5em;font-weight:500">
-    一个<em class="accent" style="font-style:normal">诚实中继</em>如何让 Agent 安全地调用付费 API</span></h1>
+    找一个"信使"帮你办事，<br>既<em class="accent" style="font-style:normal">不让他偷看</em>，又能<em class="accent" style="font-style:normal">监督他别多收钱</em></span></h1>
   <p class="sub" style="margin-top:18px;max-width:720px">
-    Agent A 想通过问责中继 R 调用服务 S：查询内容要对 R 保密、
-    R 不能把请求错路由到别的服务、S 返回的计费数字 A 不能低报。
-    三方用 <b>2PC</b> 共同模拟出一个"虚拟 TLS 客户端"——S 完全无感。
+    把 A 想成"你"、R 想成"跑腿的"、S 想成"商店"：你让跑腿的帮你去商店买东西——
+    但不能让他看到你买什么（隐私）、不能让他把你带去别家店（路由正确）、
+    账单上写的数字也得是他亲眼核对过的（计费可验）。
+    诀窍只有一句话：<b>商店的钥匙被掰成两半，你和跑腿的一人一半</b>。
   </p>
 
   <div class="actors">
     <div class="actor">
       <div class="icon">🤖</div>
-      <div class="name">Agent A</div>
-      <div class="role">持有查询意图与 tk_sapp；<br>验证证书防 misrouting</div>
+      <div class="name">Agent A（你）</div>
+      <div class="role">知道自己要买什么；<br>亲自检查商店招牌</div>
     </div>
     <div class="wire">
-      <div class="lbl">A⇄R<br>OT 通道</div>
+      <div class="lbl">A⇄R<br>秘密通道</div>
       <div class="ln" style="width:80px"></div>
     </div>
     <div class="actor">
       <div class="icon">📡</div>
-      <div class="name">ARI Relay R</div>
-      <div class="role">只转发密文；<br>持有密钥<i>份额</i>而非密钥</div>
+      <div class="name">Relay R（跑腿的）</div>
+      <div class="role">只负责搬包裹；<br>手里只有<i>半把钥匙</i></div>
     </div>
     <div class="wire">
-      <div class="lbl">R⇄S<br>标准 TLS</div>
+      <div class="lbl">R⇄S<br>普通 HTTPS</div>
       <div class="ln" style="width:80px"></div>
     </div>
     <div class="actor">
       <div class="icon">🛰️</div>
-      <div class="name">Provider S</div>
-      <div class="role">普通 TLS 1.3 服务；<br>不知道 A/R 的存在</div>
+      <div class="name">Provider S（商店）</div>
+      <div class="role">普通网站；<br>根本看不出对面是两个人</div>
     </div>
   </div>
-  <div class="cap">A 与 R 各持一半会话密钥；任何一方都无法单独读写通道内容。</div>
+  <div class="cap">钥匙一人一半 → 开箱必须两人在场；任何一方单独都读不了包裹里的内容。</div>
 </section>
 
 <!-- ========================= THREE WHYS ============================ -->
 <section id="why">
   <h3>Three questions</h3>
-  <h2>一句话版：为什么它安全</h2>
+  <h2>先回答三个"凭什么"</h2>
 
   <div class="why">
     <div class="no">01</div>
     <div>
-      <h4>为什么中转 R 看不到明文？</h4>
-      <p>因为<b>密钥根本不存在于任何一方手里</b>——应用密钥被拆成
-        tk&nbsp;=&nbsp;tk<sub>A</sub>&nbsp;⊕&nbsp;tk<sub>R</sub> 两份份额，
-        R 拿着密文加半个份额等于拿一张白纸；每次解密都必须双方在 2PC 电路里共同完成，
-        GMW+OT 保证交互本身不泄露任何份额。连握手期的 Server Flight 都只用 tk<sub>shs</sub>
-        在 A 本地解密——R 从始至终只转发看不懂的字节。</p>
+      <h4>跑腿的为什么看不到我买了什么？</h4>
+      <p>因为<b>钥匙被掰成了两半，每人一半</b>。跑腿的手里的包裹是锁着的，
+        加上他那半把钥匙也开不了——就像保险柜要两把钥匙同时转才能开。
+        每次要"看一眼里面"，两个人必须隔着桌子合力开锁
+        <span style="font-size:12.5px">（技术上叫 2PC 联合计算：双方各出半把钥匙算一遍，
+        过程本身不会泄露任何人的那半把）</span>。
+        所以跑腿的一路只搬得上锁的箱子，永远不知道里面是什么。</p>
     </div>
   </div>
 
   <div class="why">
     <div class="no">02</div>
     <div>
-      <h4>为什么没法偷换路由？</h4>
-      <p>因为<b>验证书的权力没有下放给 R</b>。证书、CertificateVerify、ServerFinished
-        由 A 在本地解密验证：X.509 证书绑定服务域名，签名密钥只有真正的 S 才有。
-        R 若把流量转去 api2.evil.com，A 端立刻看到域名错配的证书 → 握手中止。
-        "路由完整性"退化成一句 A 端证书的域名校验，R 对"它是谁"没有裁量权。</p>
+      <h4>为什么跑腿的不能把我带去别家店？</h4>
+      <p>因为<b>验招牌的是我，不是跑腿的</b>。每家正规商店都有一张挂在门上的
+        "营业执照"（证书），上面写着店名、而且无法伪造。
+        跑腿的要是把我带去冒牌店，我这头一看执照店名不对，立刻转身走人
+        <span style="font-size:12.5px">（A 本地解密证书并核对域名，不匹配就中止握手——
+        已实测拒绝）</span>。跑腿的只能搬箱子，"对面是谁"他说了不算。</p>
     </div>
   </div>
 
   <div class="why">
     <div class="no">03</div>
     <div>
-      <h4>为什么没法注水 token？</h4>
-      <p>因为<b>计费字段不是谁申报就是多少</b>。响应是 S 用 TLS 加密的——R 或 A
-        改一个字节，GCM tag 立刻作废；而 A 自报的数字 R 也不信：双方把响应密文的
-        一个窗口在 2PC 里解密成份额，电路内逐字节比对 pattern、用 JSON FSM
-        校验字段所在深度，再用 com<sub>A</sub>&nbsp;=&nbsp;H(tk<sub>A</sub>∥r)
-        钉死 A 的密钥份额防止换把"好说话"的密钥。任何一项对不上 → accept=0，
-        且 R 全程只学到一个比特。</p>
+      <h4>为什么账单数字没法偷偷改小？</h4>
+      <p>因为<b>账单不是谁报多少就是多少</b>。商店给的账单封在防拆信封里，
+        谁碰过一眼就能看出来<span style="font-size:12.5px">（GCM 防篡改）</span>。
+        我报的数字跑腿的不信、跑腿的加码我也不干——
+        于是两人合力把信封撕开一条缝，<b>只露出账单那一行数字</b>，
+        当场对一遍：数字、位置对不对得上
+        <span style="font-size:12.5px">（2PC 电路里逐字节比对 + 深度校验 +
+        com_A 承诺钉死我的那半把钥匙）</span>。
+        对不上就拒付；而且整个过程账单其它内容谁也看不见。</p>
     </div>
   </div>
 </section>
@@ -216,10 +221,10 @@
 <!-- ========================= BASELINES ============================ -->
 <section id="baselines">
   <h3>Baselines</h3>
-  <h2>为什么以前的方法做不到</h2>
+  <h2>以前找"跑腿的"的法子，为什么都不太行</h2>
   <p class="sub" style="max-width:760px">
-    对"隐私（R 看不到明文）× 计费（A/R 报多少可验）"两个目标，已有方案各占一头——
-    缺的不是 HTTPS，而是"密钥无人独占"的结构：
+    既要跑腿的不偷看，又要账单能核对——以前的办法只能占一头，
+    缺的其实不是加密，而是"<b>钥匙没人独占</b>"这个结构：
   </p>
   <div class="grid cols2" style="margin-top:24px">
 
@@ -233,9 +238,10 @@
         <text class="bl2" x="160" y="44">TLS</text>
         <text class="bbad" x="160" y="94">计费 = A 自报 ✗</text>
       </svg>
-      <h4>直连 A→S（无中转）</h4>
-      <p>隐私天然成立，但没有审计方——token 用量只能信 A 自报，ARI 模型不成立。</p>
-      <p class="bad" style="font-size:13px;margin-top:6px">✗ 计费不可验</p>
+      <h4>不要跑腿的，自己跑（直连）</h4>
+      <p>我自己去商店当然没人偷看，但也就没人帮我盯着账单——
+        用了多少 token 全靠我嘴上报，报少没人发现。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 没人监督计费</p>
     </div>
 
     <div class="card">
@@ -253,9 +259,10 @@
         <text class="bbad" x="160" y="30">🔓 握有完整密钥</text>
         <text class="bbad" x="160" y="94">能解密 → 明文可见 · 计费仍自报</text>
       </svg>
-      <h4>TLS 终结代理（网关 / CDN）</h4>
-      <p>R 就是连接的一端，完整密钥在手——能解就能看；计费还是它自己说。</p>
-      <p class="bad" style="font-size:13px;margin-top:6px">✗ 隐私失败</p>
+      <h4>把钥匙整把给跑腿的（终结代理 / CDN）</h4>
+      <p>跑腿的直接替我开箱打包：他能看见一切，我买什么他一清二楚；
+        账单也照样是他自己报。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 全被偷看</p>
     </div>
 
     <div class="card">
@@ -271,9 +278,10 @@
         <text class="bl2" x="160" y="30">只见密文</text>
         <text class="bbad" x="160" y="94">只按字节/时长计费 · 字段不可验</text>
       </svg>
-      <h4>纯转发隧道</h4>
-      <p>TLS 直接穿过 R：明文保住了，但字段级用量（如 total_tokens）无从核验。</p>
-      <p class="bad" style="font-size:13px;margin-top:6px">✗ 计费失败</p>
+      <h4>只让跑腿的搬箱子（纯转发）</h4>
+      <p>他确实什么都看不见，可也什么都帮不了：
+        只能按箱子重量收钱，账单里的 token 数没法核对。</p>
+      <p class="bad" style="font-size:13px;margin-top:6px">✗ 只能按流量计费</p>
     </div>
 
     <div class="card">
@@ -291,9 +299,10 @@
         <text class="bwarn" x="160" y="26">⚠ 信任 Intel + 无侧信道</text>
         <text class="bwarn" x="160" y="94">信任转移而非消除</text>
       </svg>
-      <h4>TEE enclave（SGX 代理）</h4>
-      <p>隐私与计费都成立——但前提是相信芯片厂商、远程证明和没有侧信道漏洞。</p>
-      <p class="warn" style="font-size:13px;margin-top:6px">△ 额外硬件信任假设</p>
+      <h4>给跑腿的配个"保险箱"（TEE / SGX）</h4>
+      <p>事情在保险箱里办、理论上都能成——但保险箱是芯片厂商做的，
+        得相信他们没留后门、保险箱也没被人撬开过（侧信道事故有一长串）。</p>
+      <p class="warn" style="font-size:13px;margin-top:6px">△ 得额外信一台硬件</p>
     </div>
 
     <div class="card">
@@ -310,10 +319,10 @@
         <text class="bwarn" x="160" y="30">查询模板对 verifier 可见</text>
         <text class="bwarn" x="160" y="94">面向 provenance · 无边界隐藏/计费电路</text>
       </svg>
-      <h4>DECO 类三方握手（zkTLS）</h4>
-      <p>同样拆密钥，但目标是"证明数据来自某站"：verifier 参与构造查询，
-        没有 SHC/LDC 边界隐藏，也没有字段级计费电路。</p>
-      <p class="warn" style="font-size:13px;margin-top:6px">△ 查询半公开 · 不做计费</p>
+      <h4>再请个"证人"陪跑（DECO / zkTLS）</h4>
+      <p>思路也是钥匙掰两半，但它的目标是"证明东西真从这家店买的"：
+        证人得看着你递单子、知道你大概买了什么，也不负责帮你核账单。</p>
+      <p class="warn" style="font-size:13px;margin-top:6px">△ 目的不同 · 单子对证人半公开</p>
     </div>
 
     <div class="card hit">
@@ -332,102 +341,110 @@
         <text class="bok" x="160" y="94">✓ 隐私　✓ 计费可验　✓ S 零改动</text>
       </svg>
       <h4>TrustedARI（本工作）</h4>
-      <p>密钥以份额存在于 A、R 双方：电路内可验、电路外不可读，
-        不需要 TEE，S 完全无感。</p>
-      <p class="ok" style="font-size:13px;margin-top:6px">✓ 两个目标同时成立</p>
+      <p>钥匙掰两半：想开箱必须两人同时在场——
+        对账时能验、平时谁也偷看不了；不用保险箱，商店也不用改任何东西。</p>
+      <p class="ok" style="font-size:13px;margin-top:6px">✓ 隐私和计费两头都占</p>
     </div>
 
   </div>
   <p class="cap" style="text-align:left;margin-top:14px">
-    注：TEE 在其安全假设下确实可行，区别是信任转移而非消除；
-    DECO 的"△"指查询对 verifier 只能有限隐藏——它保护的是来源，不是查询内容。
+    注：TEE 在"相信芯片没问题"的前提下是可行的，区别是信任转移而非消除；
+    DECO 的"△"指查询内容对证人只能有限隐藏——它保护的是来源，不是查询内容。
   </p>
 </section>
 
 <!-- ========================= PHASE 1 ============================ -->
 <section>
-  <h3>Phase 1 · Π_ths handshake</h3>
-  <h2>三方握手：密钥拆成两半，证书仍由 Agent 验</h2>
+  <h3>Phase 1 · 三方打招呼</h3>
+  <h2>第一步：配出一把"两半的钥匙"，招牌还是我自己验</h2>
   <p class="sub" style="max-width:720px">
-    R 本质上是"半个客户端"：ECDHE 秘密拆成 Z<sub>A</sub>+Z<sub>R</sub>，
-    HKDF 全链在 2PC 中执行，R 只拿到 tk_chs/tk_shs 的<i>份额</i>。
-    服务端 flight（证书+CV+SF）只在 A 处解密——R 无法伪造服务商身份。
+    跑腿的本质上只算"半个顾客"：和商店换钥匙时，他那半把只分到他手里，
+    整把钥匙从头到尾不存在于任何地方。
+    商店递过来的"营业执照"也只在<i>我</i>这边拆开看——
+    他想冒名顶替成别的商店，门都没有。
   </p>
   <div class="flow">
     <div class="step"><div class="dir">A → R → S</div>
-      <div class="t">ClientHello：r_i → Z_i，CKS = Z_A + Z_R</div>
-      <div class="d">双方各自贡献 ephemeral share，合成压缩点作为 key_share</div></div>
-    <div class="step mpc"><div class="dir">A ⇄ R · 2PC</div>
-      <div class="t">ECtF 点加 → DHE 份额 → HKDF 链</div>
-      <div class="d">ssk_i = Y<sup>r_i</sup>，点加只取 x 坐标；fld→bits 后 Extract/Expand 出 CHTS/SHTS/dHS</div></div>
+      <div class="t">打招呼：各自出一半原料</div>
+      <div class="d">我出 Z_A、跑腿出 Z_R，拼成一次性的"接头暗号"key_share 发给商店
+        <span style="font-size:12px;color:var(--mut)">（ECDHE：CKS = Z_A + Z_R）</span></div></div>
+    <div class="step mpc"><div class="dir">A ⇄ R · 合力计算</div>
+      <div class="t">两半钥匙在这里锻出来</div>
+      <div class="d">每人只拿到自己那半把钥匙材料，合力算出整串钥匙——但谁也没见过整把
+        <span style="font-size:12px;color:var(--mut)">（ECtF 点加 → HKDF 链，全程 2PC）</span></div></div>
     <div class="step"><div class="dir">S → R → A</div>
-      <div class="t">加密的 Server Flight（EE/CRT/CV/SF）</div>
-      <div class="d">A 重建 tk_shs 解密：验证书链、域名、CertificateVerify、ServerFinished</div></div>
-    <div class="step mpc"><div class="dir">A ⇄ R · 2PC</div>
-      <div class="t">MS → CATS/SATS → tk_capp/tk_sapp；A 提交 com_A = H(tk_A_sapp ∥ r)</div>
-      <div class="d">tk_sapp 份额留给 R 用于计费核验；iv 公开</div></div>
+      <div class="t">商店递来上锁的"营业执照信封"</div>
+      <div class="d">由我拆开：店名对不对、章对不对——跑腿的根本打不开
+        <span style="font-size:12px;color:var(--mut)">（crt/CV/SF 由 A 本地解密验证）</span></div></div>
+    <div class="step mpc"><div class="dir">A ⇄ R · 合力计算</div>
+      <div class="t">对账用的那半把钥匙留下来，并立字据</div>
+      <div class="d">跑腿的留下半把"账单钥匙"份额，我把自己的半把盖章封存（com_A），以后想耍赖换把钥匙也不行
+        <span style="font-size:12px;color:var(--mut)">（com_A = H(tk_A∥r)）</span></div></div>
     <div class="step"><div class="dir">A → R → S</div>
-      <div class="t">Client Finished（tk_chs 加密）</div>
-      <div class="d">CF 由 A 在本地组装，经 R 转发——S 收到标准记录，握手完成</div></div>
+      <div class="t">回执：通道开通</div>
+      <div class="d">我写好回执、跑腿的跑腿——商店收到一份完全正常的答复，开始营业
+        <span style="font-size:12px;color:var(--mut)">（Client Finished）</span></div></div>
   </div>
   <div class="cap" style="color:var(--warn)">
-    ✗ misrouting：R 把流量转到 api2.evil.com → A 端证书名校验失败，会话中止（已测试）。
+    ✗ 偷换商店实测：跑腿的把我们带去 api2.evil.com → 我这头执照店名不对，当场走人（已测试）。
   </div>
 </section>
 
 <!-- ========================= PHASE 2 ============================ -->
 <section>
-  <h3>Phase 2 · Π_query</h3>
-  <h2>模板查询：连字段边界都对 R 隐藏</h2>
+  <h3>Phase 2 · 填购物单</h3>
+  <h2>第二步：单子拼好上锁——连"哪一段有多长"跑腿的都猜不到</h2>
   <p class="sub" style="max-width:720px">
-    查询由模板拼装：公共段 P、定长私有段 A<sub>f</sub>/R<sub>f</sub>、
-    <b>变长私有段 A<sub>s</sub>/R<sub>s</sub></b>（真实长度 g 都是份额）。
-    段间用 SHC（Structure-Hiding Concat）抹平边界，最后经 2PC-AEAD 加密。
+    单子是拼起来的：有的格子大家都知道（表头），有的格子只有我知道
+    （数量），还有的格子连"有多长"都是秘密（地址写了几个字）——
+    接缝全部抹平，装进上锁的信封。
   </p>
 
   <div class="segbar" id="seg"></div>
   <div class="legend">
-    <span><i style="background:#9aa3b8"></i>P 公共模板</span>
-    <span><i style="background:#ffd08a"></i>A<sub>f</sub> 定长·A 私有</span>
-    <span><i style="background:#7ae0ff"></i>A<sub>s</sub> 变长·长度也是秘密</span>
-    <span><i style="background:#c4a6ff"></i>Π_I2S 生成的 Content-Length</span>
+    <span><i style="background:#9aa3b8"></i>P 表头·大家都看得到</span>
+    <span><i style="background:#ffd08a"></i>A<sub>f</sub> 定长·只有我知道</span>
+    <span><i style="background:#7ae0ff"></i>A<sub>s</sub> 变长·连长度都是秘密</span>
+    <span><i style="background:#c4a6ff"></i>自动算出来的"包裹重量"字段</span>
   </div>
 
   <div class="grid cols3" style="margin-top:22px">
-    <div class="card"><h4>Π_LDC</h4>
-      <p>公共长度拼接直接本地完成——零交互、零成本。</p></div>
-    <div class="card"><h4>Π_SHC（Protocol 1）</h4>
-      <p>v<sub>a</sub>=s<sub>l</sub>‖0<sup>hr</sup>，v<sub>0</sub>=0<sup>hl</sup>‖s<sub>r</sub>；
-        对右段做 <span class="mono">blind_rotate_left</span> 后异或。
-        成本 (hl+hr)·⌈log₂⌉，装配顺序由 DP 规划 Γ 最小化。</p></div>
-    <div class="card"><h4>Π_2PC-AEAD</h4>
-      <p>整条查询以 tk_capp = tk_A ⊕ tk_R 加密；密文+tag 双开，
-        R 转发的是一条完全合法的 TLS 记录。</p></div>
+    <div class="card"><h4>能直接拼的就直接拼</h4>
+      <p>大家都知道的表头部分本地拼上，不用商量，零成本
+        <span style="font-size:12px;color:var(--mut)">（Π_LDC）</span>。</p></div>
+    <div class="card"><h4>有秘密的格子"盲着"拼</h4>
+      <p>把带秘密的段像转盘子一样错位再合并，缝在哪、多长全看不出
+        <span style="font-size:12px;color:var(--mut)">（SHC 结构隐藏拼接，
+        blind_rotate）</span>。</p></div>
+    <div class="card"><h4>整单上锁+防拆封</h4>
+      <p>两半钥匙一起转、单子封死上蜡，跑腿的原样递给商店
+        <span style="font-size:12px;color:var(--mut)">（2PC-AEAD：tk = tk_A ⊕ tk_R）</span>。</p></div>
   </div>
 </section>
 
 <!-- ========================= PHASE 3 ============================ -->
 <section>
-  <h3>Phase 3 · verifiable billing</h3>
-  <h2>可验证计费：电路里跑一个 JSON 解析器</h2>
+  <h3>Phase 3 · 对账单</h3>
+  <h2>第三步：撕一条缝，只核那一行数字</h2>
   <p class="sub" style="max-width:720px">
-    A 向 R 汇报被计费字段 φ:v，R 不信——双方在 2PC 里把
-    <b>响应密文的一个窗口解密成明文份额</b>，原地跑 JSON FSM。
+    账单（商店回的信封）我不能自己拆了报数——跑腿的不信。
+    于是两人合力<b>只在账单上撕开一小条缝</b>，露出收钱那一行，
+    隔着信封核对：是这行、是这个数、层级也没错。
   </p>
   <div class="grid cols2" style="margin-top:20px">
-    <div class="card"><h4>边界窗口 ω=(o,ℓ,ρ)</h4>
-      <p>前缀窗口从 JSON 起点正向解析，后缀窗口从尾部反向解析，
-        取较短者——大响应里只解密目标附近的几块。</p></div>
-    <div class="card"><h4>串/转义/深度状态机</h4>
-      <p><span class="mono">e_i=(1−e)·b·κ92&nbsp;&nbsp;b_i=b⊕κ34·(1−e)</span><br>
-        <span class="mono">d_i=d+(1−b)(κ123−κ125)</span> ——
-        字符串里的 <code>{</code> <code>}</code> 与 <code>\"</code> 不计深度。</p></div>
-    <div class="card"><h4>承诺重检</h4>
-      <p>com<sub>A</sub> ?= H(tk<sub>A,sapp</sub>∥r) —— A 无法换一把
-        "更好说话"的密钥份额来解释密文。</p></div>
-    <div class="card"><h4>单比特输出</h4>
-      <p>accept = com_ok ∧ bytes_ok ∧ depth_ok，<br>
-        R 只学到 accept——响应明文始终不可见。</p></div>
+    <div class="card"><h4>只撕最省的一条缝</h4>
+      <p>离信封头近就从前往后数、离尾近就从后往前数，
+        选短的那头——几百字节的信也只验要用的那几块
+        <span style="font-size:12px;color:var(--mut)">（边界窗口 ω=(o,ℓ,ρ)）</span>。</p></div>
+    <div class="card"><h4>信封里跑一台"对账小机器"</h4>
+      <p>引号里的花括号、转义符都不算数——保证核对的是真字段而不是样子像的字符
+        <span style="font-size:12px;color:var(--mut)">（JSON 解析 FSM：串/转义/深度）</span>。</p></div>
+    <div class="card"><h4>我的半把钥匙早就封存了</h4>
+      <p>事先盖章存过指纹，想换把"更好说话"的钥匙来解释信封？门都没有
+        <span style="font-size:12px;color:var(--mut)">（com_A = H(tk_A∥r) 重检）</span>。</p></div>
+    <div class="card"><h4>跑腿的最后只得到一个字</h4>
+      <p>"对得上"还是"对不上"——一个比特，账单其它内容依旧谁也看不见
+        <span style="font-size:12px;color:var(--mut)">（accept = com_ok ∧ bytes_ok ∧ depth_ok）</span>。</p></div>
   </div>
 </section>
 
@@ -441,35 +458,35 @@
     <pre id="term"></pre>
   </div>
   <p class="cap" style="text-align:left;margin-top:14px">
-    5 套测试全绿：引擎 / 电路 / 握手（含 misrouting 拒绝）/ 查询 / 计费（含 4 类攻击拒绝）；
-    计费电路在真实 OT 后端下同样通过（1-block 窗口 ≈ 16 s、A↔R 各 ~4.3 MB）。
+    5 套测试全绿：握手（含偷换商店被拒）/ 填单 / 对账（含 4 类作弊被拒）；
+    对账在真实 OT 后端同样通过（1-block 窗口 ≈ 16 s、A↔R 各 ~4.3 MB）。
   </p>
 </section>
 
 <!-- ========================= ATTACKS ============================ -->
 <section>
   <h3>Threats covered</h3>
-  <h2>威胁模型覆盖</h2>
+  <h2>谁想使坏，会有什么下场</h2>
   <table>
-    <tr><th>攻击者</th><th>行为</th><th>结果</th></tr>
-    <tr><td class="mono">R</td><td>把流量错路由到其他服务</td>
-        <td class="bad">✗ A 端证书名校验失败</td></tr>
-    <tr><td class="mono">R</td><td>读取查询 / 响应明文</td>
-        <td class="ok">✓ 只有密钥份额，通道为密文</td></tr>
-    <tr><td class="mono">A</td><td>低报计费字段（如 42→00）</td>
-        <td class="bad">✗ bytes_ok 失配</td></tr>
-    <tr><td class="mono">A</td><td>声称字段位于错误深度</td>
-        <td class="bad">✗ depth_ok 失配</td></tr>
-    <tr><td class="mono">A</td><td>更换密钥份额伪造解释</td>
-        <td class="bad">✗ com_A = H(tk_A∥r) 失配</td></tr>
-    <tr><td class="mono">R</td><td>篡改自身 tk_sapp 份额</td>
-        <td class="bad">✗ 解密出的明文对不上字段</td></tr>
+    <tr><th>谁使坏</th><th>怎么使坏</th><th>下场</th></tr>
+    <tr><td class="mono">跑腿的</td><td>把我们带去别家店</td>
+        <td class="bad">✗ 我这头执照店名不对，当场走人</td></tr>
+    <tr><td class="mono">跑腿的</td><td>偷看单子或账单内容</td>
+        <td class="ok">✓ 只有半把钥匙，箱子打不开</td></tr>
+    <tr><td class="mono">我</td><td>把账单数字改小（如 42→00）</td>
+        <td class="bad">✗ 信封撕缝一对，字对不上</td></tr>
+    <tr><td class="mono">我</td><td>指个不相干的格子冒充计费字段</td>
+        <td class="bad">✗ 对账小机器：层级不对</td></tr>
+    <tr><td class="mono">我</td><td>换把没封存的钥匙来解释信封</td>
+        <td class="bad">✗ 字据指纹对不上（com_A）</td></tr>
+    <tr><td class="mono">跑腿的</td><td>偷偷改自己那半把钥匙</td>
+        <td class="bad">✗ 开出来的全是乱码，对不上字段</td></tr>
   </table>
 </section>
 
 <footer>
   <span class="pill">repo · bruce2233/trustedari</span>
-  &nbsp;&nbsp;论文核心功能 Python 复现 · GMW 2PC · CO15+IKNP OT · sim/OT 双后端
+  &nbsp;&nbsp;论文核心功能 Python 复现 · "钥匙掰两半"= GMW 2PC · CO15+IKNP OT · sim/OT 双后端
 </footer>
 </div>
 
@@ -479,7 +496,7 @@ const TPL = [
   ["P",'{"tokens":',"p"],["Af","10","af"],["P",',"q":"',"p"],
   ["As","translate…","as"],["P",'"}',"p"],
 ];
-const CL = [["P","Content-Length: ","p"],["I2S","0053","i2s"],["P","\\r\\n","p"]];
+const CL = [["P","包裹重量: ","p"],["I2S","0053","i2s"],["P","\\r\\n","p"]];
 const seg = document.getElementById("seg");
 [...CL,...TPL].forEach(([t,c,k],i)=>{
   const d=document.createElement("div");
@@ -492,14 +509,14 @@ const seg = document.getElementById("seg");
 // ---- terminal typing ----
 const LINES=[
  ["dim","$ python3 demo.py"],
- ["","[A] handshake with virtual client (Pi_ths) ..."],
- ["","[R] relaying handshake (sees only ciphertext) ..."],
- ["ok","[A] handshake ok; cert 'api.example.com' verified; com_A = 61ab4f…"],
- ["","[R] forwarding opaque record (55B) to S ..."],
- ["",'[A] response: {"status":"ok","usage":{"total_tokens":10,…}}'],
- ["ok","[*] billing verification: accept = 1"],
- ["warn","[*] forged claim 'total_tokens: 00': accept = 0  (rejected)"],
- ["ok","[*] done — all checks passed"],
+ ["","[我] 和跑腿的一起跟商店打招呼 ..."],
+ ["","[跑腿的] 帮忙传话（只搬上锁的箱子）..."],
+ ["ok","[我] 执照验过：api.example.com ✓；字据 com_A = 61ab4f…"],
+ ["","[跑腿的] 把封好的单子（55B）递给商店 ..."],
+ ["",'[商店] 回信封：{"status":"ok","usage":{"total_tokens":10,…}}'],
+ ["ok","[*] 对账：accept = 1（数字对得上）"],
+ ["warn","[*] 作弊试试把 10 报成 00：accept = 0 → 拒付"],
+ ["ok","[*] 完成 — 全部检查通过"],
 ];
 const term=document.getElementById("term");
 let li=0;
