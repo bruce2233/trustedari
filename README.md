@@ -74,6 +74,7 @@ plus the billed-field pattern:
 ```bash
 python3 examples/llm_billing.py   # LLM API: hidden prompt + verified tokens
 python3 examples/shop_order.py    # shop order: hidden addr + verified total
+python3 examples/sub2api_relay.py # sub2api relay: quota charged only on accept
 ```
 
 - **llm_billing** — `{"model":..,"prompt":"<As 53B>","max_tokens":"<Af>"}`;
@@ -84,6 +85,14 @@ python3 examples/shop_order.py    # shop order: hidden addr + verified total
   shipping address stays hidden-length-private. S returns
   `{"order_id","total_cents","status"}`; circuit proves `total_cents`
   (depth 1) so R can release escrow. A −1 cent forgery is rejected.
+- **sub2api_relay** — models a sub2api-style relay station: subscriber
+  A holds an `sk-` key, R forwards the request to an unmodified
+  OpenAI-compatible upstream (`api.openai.com`), and the subscriber's
+  token quota is deducted only after the billing circuit accepts
+  `usage.total_tokens` — under-reporting it by −8 is rejected and no
+  quota is deducted. The file's docstring maps the three hooks a real
+  deployment needs (`forward record → upstream roundtrip →
+  verify-then-charge`).
 
 ## What the demo shows
 
